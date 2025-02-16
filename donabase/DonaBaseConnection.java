@@ -8,6 +8,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Super cheesy database access class.
@@ -18,6 +20,15 @@ public class DonaBaseConnection implements AutoCloseable {
    * JDBC Connection
    */
   private final Connection conn;
+
+  /**
+   * Name of logger
+   */
+  private static final String LOGGERNAME = "donabase";
+  /**
+   * Logger instance used for logging events, errors, or diagnostics
+   */
+  private static final Logger logger = Logger.getLogger(LOGGERNAME);
 
   /**
    * Create a DonaBase connection.
@@ -35,7 +46,9 @@ public class DonaBaseConnection implements AutoCloseable {
     try {
       conn = DriverManager.getConnection("jdbc:mysql://%s:%d/%s?allowMultiQueries=true".formatted(server, port, dbname),
           username, password);
+      logger.info(() -> "Connected to %s:%d/%s as %s".formatted(server, port, dbname, username));
     } catch (SQLException ex) {
+      logger.log(Level.SEVERE, () -> "Failed to connect to %s:%d/%s as %s".formatted(server, port, dbname, username));
       throw new DonaBaseException("Connect failed", ex);
     }
   }
@@ -54,6 +67,7 @@ public class DonaBaseConnection implements AutoCloseable {
     // Create and execute query statement
     try (Statement stmt = conn.createStatement();
         ResultSet rs = stmt.executeQuery(queryStmt)) {
+      logger.info(() -> "Executed query: %s".formatted(queryStmt));
       // Get meta data about result
       ResultSetMetaData metaData = rs.getMetaData();
       int columnCount = metaData.getColumnCount();
@@ -69,6 +83,7 @@ public class DonaBaseConnection implements AutoCloseable {
       }
       return rows;
     } catch (SQLException ex) {
+      logger.severe(() -> "Failed to execute query: %s".formatted(queryStmt));
       throw new DonaBaseException("Query failed", ex);
     }
   }
@@ -86,8 +101,10 @@ public class DonaBaseConnection implements AutoCloseable {
     // Create and execute insert statement
     try (Statement stmt = conn.createStatement()) {
       // True if insert creates 1 or more rows
+      logger.info(() -> "Executed insert: %s".formatted(insertStmt));
       return stmt.executeUpdate(insertStmt) > 0;
     } catch (SQLException ex) {
+      logger.severe(() -> "Failed to execute insert: %s".formatted(insertStmt));
       throw new DonaBaseException("Update failed", ex);
     }
   }
@@ -99,7 +116,7 @@ public class DonaBaseConnection implements AutoCloseable {
     try {
       conn.close();
     } catch (SQLException ex) {
-      // Ignore close failure
+      logger.log(Level.INFO, () -> "Failed to close connection");
     }
   }
 }
