@@ -12,7 +12,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Super cheesy database access class.
+ * Super cheesy database access class
  */
 public class DonaBaseConnection implements AutoCloseable {
 
@@ -31,6 +31,16 @@ public class DonaBaseConnection implements AutoCloseable {
   private static final Logger logger = Logger.getLogger(LOGGERNAME);
 
   /**
+   * Count of created DonaBase connections
+   */
+  private static int DonaBaseConnections = 0;
+
+  /**
+   * ID of this DonaBase connection
+   */
+  private final int DonaBaseConnectionID;
+
+  /**
    * Create a DonaBase connection.
    * 
    * @param server   server to connect to
@@ -47,6 +57,7 @@ public class DonaBaseConnection implements AutoCloseable {
       conn = DriverManager.getConnection("jdbc:mysql://%s:%d/%s?allowMultiQueries=true".formatted(server, port, dbname),
           username, password);
       logger.info(() -> "Connected to %s:%d/%s as %s".formatted(server, port, dbname, username));
+      DonaBaseConnectionID = ++DonaBaseConnections;
     } catch (SQLException ex) {
       logger.log(Level.SEVERE, () -> "Failed to connect to %s:%d/%s as %s".formatted(server, port, dbname, username));
       throw new DonaBaseException("Connect failed", ex);
@@ -55,7 +66,6 @@ public class DonaBaseConnection implements AutoCloseable {
 
   /**
    * Execute a query (select) statement and return results.
-   * 
    * This will execute other statements; however, behavior is undefined
    * 
    * @param queryStmt query statement to execute
@@ -90,7 +100,6 @@ public class DonaBaseConnection implements AutoCloseable {
 
   /**
    * Execute an insert statement.
-   * 
    * This will execute other statements; however, behavior is undefined
    * 
    * @param insertStmt statement
@@ -114,6 +123,7 @@ public class DonaBaseConnection implements AutoCloseable {
    */
   public void close() {
     try {
+      logger.info(() -> "Closing %d out of %d DonaBase Connections".formatted(DonaBaseConnectionID, DonaBaseConnections));
       conn.close();
     } catch (SQLException ex) {
       logger.log(Level.INFO, () -> "Failed to close connection");
